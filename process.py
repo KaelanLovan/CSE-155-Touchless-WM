@@ -192,7 +192,7 @@ class GestureBackend:
             frame_start = time.perf_counter()
 
             t0 = time.perf_counter()
-            self.hand_detector.detect_async(frame, timestamp_ms=frame_count)
+            self.hand_detector.detect_async(frame, timestamp_ms=int(time.monotonic() * 1000))
             result, result_timestamp = self.hand_detector.get_latest_result()
             if result is not None and result_timestamp > latest_result_timestamp:
                 latest_result = result
@@ -221,7 +221,7 @@ class GestureBackend:
                 t5 = time.perf_counter()
 
                 hand_center_x = sum(lm.x for lm in hand_2d) / len(hand_2d)
-                current_time = time.time()
+                current_time = time.monotonic()
 
                 palm_open = self.is_open_palm(hand_2d)
                 fist_closed = self.is_fist(hand_2d)
