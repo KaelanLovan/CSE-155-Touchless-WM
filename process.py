@@ -167,6 +167,18 @@ class GestureBackend:
         cam.set(cv.CAP_PROP_FRAME_WIDTH, 640)
         cam.set(cv.CAP_PROP_FRAME_HEIGHT, 480)
 
+        if not cam.isOpened():
+            cam.release()
+            print(f"[ERROR] No camera at index {self.cam_index}")
+            return False
+
+        ret, _ = cam.read()
+        cam.release()
+
+        if not ret:
+            print(f"[ERROR] Camera {self.cam_index} not readable")
+            return False
+
         while not self.app_stop_event.is_set():
             ret, frame = cam.read()
             if not ret:
