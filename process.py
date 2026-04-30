@@ -172,12 +172,12 @@ class GestureBackend:
             print(f"[ERROR] No camera at index {self.cam_index}")
             return False
 
-        ret, _ = cam.read()
-        cam.release()
+        # ret, _ = cam.read()
+        # cam.release()
 
-        if not ret:
-            print(f"[ERROR] Camera {self.cam_index} not readable")
-            return False
+        # if not ret:
+        #     print(f"[ERROR] Camera {self.cam_index} not readable")
+        #     return False
 
         while not self.app_stop_event.is_set():
             ret, frame = cam.read()
@@ -206,14 +206,16 @@ class GestureBackend:
             t0 = time.perf_counter()
             self.hand_detector.detect_async(frame, timestamp_ms=int(time.monotonic() * 1000))
             result, result_timestamp = self.hand_detector.get_latest_result()
+            has_new_result = False
             if result is not None and result_timestamp > latest_result_timestamp:
                 latest_result = result
                 latest_result_timestamp = result_timestamp
+                has_new_result = True
             t1 = time.perf_counter()
 
             predicted_gesture = None
 
-            if latest_result and latest_result.hand_landmarks and latest_result.hand_world_landmarks:
+            if has_new_result and latest_result and latest_result.hand_landmarks and latest_result.hand_world_landmarks:
                 hand_2d = latest_result.hand_landmarks[0]
                 hand_3d = latest_result.hand_world_landmarks[0]
 
@@ -303,7 +305,7 @@ class GestureBackend:
                     f"GRU: {gru_ms:.1f}ms"
                 )
 
-            else:
+            elif has_new_result:
                 self.prev_hand_x = None
                 self.gesture_label = "No Hand"
 
