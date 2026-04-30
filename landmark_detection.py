@@ -60,3 +60,11 @@ class HandLandmarker:
     def get_latest_result(self):
         with self._lock:
             return self._latest_result, self._latest_timestamp_ms
+    
+    def close(self):
+        if self.detector is not None:
+            self.detector.close()
+            self.detector = None
+        with self._lock:
+            self._latest_result = None
+            self._latest_timestamp_ms = -1

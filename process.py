@@ -60,21 +60,48 @@ class GestureBackend:
 
         # existing swipe gesture stuff
         self.prev_hand_x = None
-        self.gesture_label = "None"
+        
         self.last_gesture_time = 0
         self.gesture_cooldown = 0.8
         self.swipe_threshold = 0.05
 
         # new state stuff
-        self.controls_active = True
+        
         self.last_state_change_time = 0
         self.state_cooldown = 1.0
 
+        self._state_lock = threading.Lock()
+        self.gesture_label = "None"
+        self.controls_active = True
         self.timing_count = 0
         self.timing_total_ms = 0.0
         self.timing_detect_ms = 0.0
         self.timing_features_ms = 0.0
         self.timing_gru_ms = 0.0
+    
+    def get_state(self):
+        with self._state_lock:
+            return {
+                "gesture_label": self.gesture_label, 
+                "controls_active": self.controls_active,
+            }
+    
+    def get_timings(self):
+        with self._state_lock:
+            return {
+                "timing_count": self.timing_count,
+                "timing_total_ms": self.timing_total_ms,
+                "timing_detect_ms": self.timing_detect_ms,
+                "timing_features_ms": self.timing_features_ms,
+                "timing_gru_ms": self.timing_gru_ms,
+            }
+    
+    def _set_gesture_state(self, label=None, active=None):
+        with self._state_lock:
+            if label is not None:
+                self.gesture_label = label
+            if active is not None:
+                self.controls_active = active
 
     def start_camera(self):
         if self.camera_thread_ref and self.camera_thread_ref.is_alive():
@@ -107,6 +134,7 @@ class GestureBackend:
         self.app_stop_event.set()
         if self.camera_thread_ref and self.camera_thread_ref.is_alive():
             self.camera_thread_ref.join(timeout=1.0)
+        self.hand_detector.close()
         self.camera_thread_ref = None
 
     def is_processing_running(self):
@@ -129,7 +157,8 @@ class GestureBackend:
         return frame
 
     def print_average_timings(self):
-        if self.timing_count > 0:
+        t = self.get_timings()
+        if t["count"] > 0:
             print("\n=== Average Timings ===")
             print(f"Frames measured: {self.timing_count}")
             print(f"Avg Total: {self.timing_total_ms / self.timing_count:.2f}ms")
@@ -171,13 +200,6 @@ class GestureBackend:
             cam.release()
             print(f"[ERROR] No camera at index {self.cam_index}")
             return False
-
-        # ret, _ = cam.read()
-        # cam.release()
-
-        # if not ret:
-        #     print(f"[ERROR] Camera {self.cam_index} not readable")
-        #     return False
 
         while not self.app_stop_event.is_set():
             ret, frame = cam.read()
@@ -243,14 +265,12 @@ class GestureBackend:
                 # new fist / palm controls
                 if current_time - self.last_state_change_time > self.state_cooldown:
                     if fist_closed and self.controls_active:
-                        self.controls_active = False
-                        self.gesture_label = "Fist - Paused"
+                        self._set_gesture_state(label="Fist - Paused", active=False)
                         self.last_state_change_time = current_time
                         if self.perf_info: print("Controls Paused")
 
                     elif palm_open and not self.controls_active:
-                        self.controls_active = True
-                        self.gesture_label = "Open Palm - Active"
+                        self._set_gesture_state(label="Open Palm - Active", active=True)
                         self.last_state_change_time = current_time
                         if self.perf_info: print("Controls Activated")
 
@@ -260,23 +280,23 @@ class GestureBackend:
 
                     if self.controls_active and current_time - self.last_gesture_time > self.gesture_cooldown:
                         if dx > self.swipe_threshold:
-                            self.gesture_label = "Swipe Right"
+                            self._set_gesture_state(label="Swipe Right")
                             self.last_gesture_time = current_time
                             if self.perf_info: print("Detected: Swipe Right")
-                            pyautogui.hotkey('command', 'tab')
+                            pyautogui.hotkey('alt', 'tab')
 
                         elif dx < -self.swipe_threshold:
-                            self.gesture_label = "Swipe Left"
+                            self._set_gesture_state(label="Swipe Left")
                             self.last_gesture_time = current_time
                             if self.perf_info: print("Detected: Swipe Left")
-                            pyautogui.hotkey('command', 'shift', 'tab')
+                            pyautogui.hotkey('alt', 'shift', 'tab')
 
                 # only show idle labels if a recent swipe did not just happen
                 if current_time - self.last_gesture_time > 0.6:
                     if not self.controls_active:
-                        self.gesture_label = "Paused"
+                        self._set_gesture_state(label="Paused")
                     elif palm_open:
-                        self.gesture_label = "Open Palm"
+                        self._set_gesture_state(label="Palm Open")
 
                 self.prev_hand_x = hand_center_x
 
@@ -291,11 +311,12 @@ class GestureBackend:
                 features_ms = (t3 - t2) * 1000.0
                 gru_ms = (t5 - t4) * 1000.0
 
-                self.timing_count += 1
-                self.timing_total_ms += total_ms
-                self.timing_detect_ms += detect_ms
-                self.timing_features_ms += features_ms
-                self.timing_gru_ms += gru_ms
+                with self._state_lock:
+                    self.timing_count += 1
+                    self.timing_total_ms += total_ms
+                    self.timing_detect_ms += detect_ms
+                    self.timing_features_ms += features_ms
+                    self.timing_gru_ms += gru_ms
 
                 if self.perf_info: print(
                     f"[Frame {frame_count}] "
