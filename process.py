@@ -25,6 +25,15 @@ def _detect_modifier_key() -> str:
     return "alt"
 
 
+def _hotkey_failure_hint() -> str:
+    """Return a platform-specific hint for pyautogui hotkey failures."""
+    if sys.platform == "darwin":
+        return "Grant Accessibility permission in System Settings."
+    if sys.platform == "linux":
+        return "pyautogui requires an X11 session; Wayland is not supported."
+    return "Check that pyautogui is installed and your OS allows input simulation."
+
+
 def put_latest(q: queue.Queue, item: Any) -> None:
     """Put *item* onto *q*, discarding the oldest entry if the queue is full.
 
@@ -104,6 +113,8 @@ class GestureBackend:
         self.timing_total_ms: float = 0.0
         self.timing_detect_ms: float = 0.0
         self.timing_classify_ms: float = 0.0
+
+        self._hotkey_broken: bool = False
 
     # --- lifecycle -----------------------------------------------------------
 
@@ -187,16 +198,24 @@ class GestureBackend:
 
     # --- helpers -------------------------------------------------------------
 
-    @staticmethod
-    def _send_hotkey(*keys: str) -> None:
+    def _send_hotkey(self, *keys: str) -> None:
         """Send a keyboard shortcut via pyautogui.
 
         The import is deferred so pyautogui (which requires a display
-        server) is only loaded when a swipe actually triggers.
+        server) is only loaded when a swipe actually triggers.  Failures
+        are logged once and silently ignored thereafter.
         """
-        import pyautogui
+        if self._hotkey_broken:
+            return
 
-        pyautogui.hotkey(*keys)
+        try:
+            import pyautogui
+
+            pyautogui.hotkey(*keys)
+        except Exception as exc:
+            self._hotkey_broken = True
+            hint = _hotkey_failure_hint()
+            print(f"Warning: pyautogui hotkey failed ({exc}).", hint)
 
     # --- threads -------------------------------------------------------------
 
