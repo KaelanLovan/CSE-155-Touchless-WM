@@ -7,7 +7,5 @@ requires-python = ">=3.13"
 dependencies = [
     "mediapipe>=0.10.32",
     "opencv-python>=4.13.0.92",
-    "numpy>=1.26.0",
-    "torch>=2.11.0",
     "pyautogui>=0.9.54",
 ]
