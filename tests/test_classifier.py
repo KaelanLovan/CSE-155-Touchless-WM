@@ -163,3 +163,57 @@ def test_confirmed_gesture_exposed():
     for _ in range(2):
         clf.classify(hand)
     assert clf.confirmed_gesture == 2
+
+
+# ---------------------------------------------------------------------------
+# rotation
+# ---------------------------------------------------------------------------
+
+
+def test_rotation_0_normal():
+    clf = GestureClassifier(rotation=0, hold_frames=1)
+    hand = make_landmarks(ALL_EXTENDED)
+    for _ in range(2):
+        clf.classify(hand)
+    assert clf.confirmed_gesture == 4
+
+
+def test_rotation_2_inverted():
+    clf = GestureClassifier(rotation=2, hold_frames=1)
+    hand = make_landmarks(ALL_EXTENDED)
+    for _ in range(2):
+        clf.classify(hand)
+    assert clf.confirmed_gesture == 0
+
+
+def test_rotation_1_90cw():
+    clf = GestureClassifier(rotation=1, hold_frames=1)
+    hand = make_landmarks([(0.8, 0.2), (0.8, 0.2), (0.8, 0.2), (0.8, 0.2)])
+    for i in [8, 12, 16, 20]:
+        hand[i].x = 0.8
+    for i in [6, 10, 14, 18]:
+        hand[i].x = 0.2
+    for _ in range(2):
+        clf.classify(hand)
+    assert clf.confirmed_gesture == 4
+
+
+def test_rotation_3_270cw():
+    clf = GestureClassifier(rotation=3, hold_frames=1)
+    hand = make_landmarks([(0.8, 0.2), (0.8, 0.2), (0.8, 0.2), (0.8, 0.2)])
+    for i in [8, 12, 16, 20]:
+        hand[i].x = 0.2
+    for i in [6, 10, 14, 18]:
+        hand[i].x = 0.8
+    for _ in range(2):
+        clf.classify(hand)
+    assert clf.confirmed_gesture == 4
+
+
+def test_rotation_wraps_mod_4():
+    clf = GestureClassifier(rotation=6, hold_frames=1)
+    assert clf.rotation == 2
+    hand = make_landmarks(ALL_EXTENDED)
+    for _ in range(2):
+        clf.classify(hand)
+    assert clf.confirmed_gesture == 0

@@ -99,6 +99,8 @@ class GestureBackend:
 
         self.classifier = GestureClassifier()
 
+        self.rotation: int = 0
+
         self.prev_hand_x: float | None = None
         self.gesture_label: str = "None"
         self.last_gesture_time: float = 0.0
@@ -115,6 +117,28 @@ class GestureBackend:
         self.timing_classify_ms: float = 0.0
 
         self._hotkey_broken: bool = False
+
+    # --- camera orientation --------------------------------------------------
+
+    def rotate_cw(self) -> None:
+        """Rotate the camera feed 90° clockwise.
+
+        Updates both the display and the finger-extension detection.
+        """
+        self.rotation = (self.rotation + 1) % 4
+        self.classifier.rotation = self.rotation
+        if self.perf_info:
+            print(f"Rotation: {self.rotation * 90}°")
+
+    def rotate_ccw(self) -> None:
+        """Rotate the camera feed 90° counter-clockwise.
+
+        Updates both the display and the finger-extension detection.
+        """
+        self.rotation = (self.rotation - 1) % 4
+        self.classifier.rotation = self.rotation
+        if self.perf_info:
+            print(f"Rotation: {self.rotation * 90}°")
 
     # --- lifecycle -----------------------------------------------------------
 
@@ -240,11 +264,21 @@ class GestureBackend:
         cam.set(cv.CAP_PROP_FRAME_WIDTH, 640)
         cam.set(cv.CAP_PROP_FRAME_HEIGHT, 480)
 
+        _ROTATE_MAP = [
+            None,
+            cv.ROTATE_90_CLOCKWISE,
+            cv.ROTATE_180,
+            cv.ROTATE_90_COUNTERCLOCKWISE,
+        ]
+
         while not self.app_stop_event.is_set():
             ret, frame = cam.read()
             if not ret:
                 continue
             flip_frame = cv.flip(frame, 1)
+            rot = _ROTATE_MAP[self.rotation]
+            if rot is not None:
+                flip_frame = cv.rotate(flip_frame, rot)
             put_latest(self.frame_queue, flip_frame)
             put_latest(self.preview_queue, flip_frame)
 

@@ -94,6 +94,22 @@ def build_gui(backend: GestureBackend, perf_info: bool = False) -> tk.Tk:
     )
     stop_btn.grid(row=0, column=1, padx=6)
 
+    rotate_ccw_btn = tk.Button(
+        button_row,
+        text="\u21ba",  # ↺
+        width=4,
+        command=backend.rotate_ccw,
+    )
+    rotate_ccw_btn.grid(row=0, column=2, padx=2)
+
+    rotate_cw_btn = tk.Button(
+        button_row,
+        text="\u21bb",  # ↻
+        width=4,
+        command=backend.rotate_cw,
+    )
+    rotate_cw_btn.grid(row=0, column=3, padx=2)
+
     camera_label = tk.Label(root, bg="black", relief="sunken", bd=1)
     camera_label.pack(padx=10, pady=(10, 8))
 

@@ -7,6 +7,21 @@ class GestureClassifier:
     Classifies static hand poses by counting extended fingers. Uses a
     simple hold-frame debounce to suppress flickering between gestures.
 
+    A finger is *extended* when its tip is further from the wrist than
+    its PIP joint along the axis orthogonal to the hand's natural
+    direction.  The *rotation* parameter (0--3) accounts for camera
+    orientation so that the comparison axis tracks the physical
+    "up" direction:
+
+    ========  ============  =================
+    Rotation  OpenCV step   Comparison
+    ========  ============  =================
+    0         (none)        ``tip.y < pip.y``
+    1         90° clockwise ``tip.x > pip.x``
+    2         180°          ``tip.y > pip.y``
+    3         270° cw       ``tip.x < pip.x``
+    ========  ============  =================
+
     Attributes:
         GESTURES: Human-readable names for each gesture class index.
         confirmed_gesture: The last debounced gesture index, or None.
@@ -14,23 +29,37 @@ class GestureClassifier:
 
     GESTURES: list[str] = ["Fist", "Point", "Two", "Three", "Open"]
 
-    def __init__(self, hold_frames: int = 5) -> None:
+    def __init__(self, hold_frames: int = 5, rotation: int = 0) -> None:
         """Initialise the classifier.
 
         Args:
             hold_frames: Number of consecutive identical frames required
                 before a new gesture is confirmed.
+            rotation: Camera rotation steps (0=normal, 1=90°cw,
+                2=180°, 3=270°cw).
         """
         self._prev_gesture: int | None = None
         self._hold_count: int = 0
         self._hold_frames: int = hold_frames
         self.confirmed_gesture: int | None = None
+        self.rotation: int = rotation % 4
+
+    # -- comparison helpers ---------------------------------------------------
+
+    def _tip_ahead_of_pip(self, tip, pip) -> bool:
+        """Return True when *tip* is ahead of *pip* for the current rotation."""
+        if self.rotation == 0:
+            return tip.y < pip.y
+        if self.rotation == 1:
+            return tip.x > pip.x
+        if self.rotation == 2:
+            return tip.y > pip.y
+        return tip.x < pip.x
+
+    # -- public API -----------------------------------------------------------
 
     def count_extended_fingers(self, hand_2d: list) -> int:
         """Count how many of the four main fingers are extended.
-
-        A finger is considered extended when its tip landmark is above
-        (has a smaller y value than) its PIP joint.
 
         Args:
             hand_2d: List of 21 MediaPipe NormalizedLandmark objects.
@@ -46,7 +75,7 @@ class GestureClassifier:
         ]
         extended = 0
         for tip_idx, pip_idx in finger_pairs:
-            if hand_2d[tip_idx].y < hand_2d[pip_idx].y:
+            if self._tip_ahead_of_pip(hand_2d[tip_idx], hand_2d[pip_idx]):
                 extended += 1
         return extended
 
