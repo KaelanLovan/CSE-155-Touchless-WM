@@ -7,8 +7,6 @@ import queue
 import time
 from typing import Optional, Any
 
-import pyautogui
-
 from mediapipe.tasks.python import vision
 
 from landmark_detection import HandLandmarker
@@ -186,15 +184,35 @@ class GestureBackend:
         else:
             print("\nNo frames with valid hand landmarks were measured.")
 
+    # --- helpers -------------------------------------------------------------
+
+    @staticmethod
+    def _send_hotkey(*keys: str) -> None:
+        """Send a keyboard shortcut via pyautogui.
+
+        The import is deferred so pyautogui (which requires a display
+        server) is only loaded when a swipe actually triggers.
+        """
+        import pyautogui
+
+        pyautogui.hotkey(*keys)
+
     # --- threads -------------------------------------------------------------
 
     def _cam_thread(self) -> None:
         """Camera capture loop running in a daemon thread.
 
         Reads frames, mirrors them horizontally, and pushes them into
-        the frame and preview queues.
+        the frame and preview queues.  If the camera cannot be opened
+        the thread prints a warning and exits immediately.
         """
         cam = cv.VideoCapture(self.cam_index)
+        if not cam.isOpened():
+            print(f"Warning: Could not open camera at index {self.cam_index}.")
+            print("Camera capture has been disabled.")
+            self.app_stop_event.set()
+            return
+
         try:
             cam.set(cv.CAP_PROP_BUFFERSIZE, 1)
         except AttributeError:
@@ -287,14 +305,14 @@ class GestureBackend:
                             self.last_gesture_time = current_time
                             if self.perf_info:
                                 print("Detected: Swipe Right")
-                            pyautogui.hotkey(self.modifier_key, "tab")
+                            self._send_hotkey(self.modifier_key, "tab")
 
                         elif dx < -self.swipe_threshold:
                             self.gesture_label = "Swipe Left"
                             self.last_gesture_time = current_time
                             if self.perf_info:
                                 print("Detected: Swipe Left")
-                            pyautogui.hotkey(self.modifier_key, "shift", "tab")
+                            self._send_hotkey(self.modifier_key, "shift", "tab")
 
                 # --- static gesture classification ---------------------------
                 classify_idx = self.classifier.classify(hand_2d)

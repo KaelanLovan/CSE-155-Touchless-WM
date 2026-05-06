@@ -9,3 +9,8 @@ dependencies = [
     "opencv-python>=4.13.0.92",
     "pyautogui>=0.9.54",
 ]
+
+[dependency-groups]
+test = [
+    "pytest>=8.0.0",
+]
