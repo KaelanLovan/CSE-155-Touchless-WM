@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "mediapipe>=0.10.32",
+    "numpy>=1.26.0",
     "opencv-python>=4.13.0.92",
     "pyautogui>=0.9.54",
 ]
@@ -14,3 +15,26 @@ dependencies = [
 test = [
     "pytest>=8.0.0",
 ]
+lint = [
+    "ruff>=0.12.0",
+    "ty>=0.0.34",
+]
+
+[tool.ruff]
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort (import ordering)
+    "W",   # pycodestyle warnings
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.ty.src]
+exclude = ["tests/"]

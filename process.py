@@ -1,16 +1,17 @@
 from __future__ import annotations
 
-import cv2 as cv
+import queue
 import sys
 import threading
-import queue
 import time
-from typing import Optional, Any
+from typing import Any
 
+import cv2 as cv
+import numpy as np
 from mediapipe.tasks.python import vision
 
-from landmark_detection import HandLandmarker
 from classifier import GestureClassifier
+from landmark_detection import HandLandmarker
 
 
 def _detect_modifier_key() -> str:
@@ -53,7 +54,7 @@ class GestureBackend:
         self,
         cam_index: int = 0,
         perf_info: bool = False,
-        modifier_key: Optional[str] = None,
+        modifier_key: str | None = None,
     ) -> None:
         """Initialise the backend.
 
@@ -78,8 +79,8 @@ class GestureBackend:
         self.app_stop_event = threading.Event()
         self.process_stop_event = threading.Event()
 
-        self.camera_thread_ref: Optional[threading.Thread] = None
-        self.process_thread_ref: Optional[threading.Thread] = None
+        self.camera_thread_ref: threading.Thread | None = None
+        self.process_thread_ref: threading.Thread | None = None
 
         self.hand_detector = HandLandmarker(
             model_path="hand_landmarker.task",
@@ -89,7 +90,7 @@ class GestureBackend:
 
         self.classifier = GestureClassifier()
 
-        self.prev_hand_x: Optional[float] = None
+        self.prev_hand_x: float | None = None
         self.gesture_label: str = "None"
         self.last_gesture_time: float = 0.0
         self.gesture_cooldown: float = 0.8
@@ -147,7 +148,7 @@ class GestureBackend:
         """Return True if the processing thread is currently alive."""
         return bool(self.process_thread_ref and self.process_thread_ref.is_alive())
 
-    def get_latest_display_frame(self) -> Optional[cv.Mat]:
+    def get_latest_display_frame(self) -> np.ndarray | None:
         """Return the most recent annotated frame for display.
 
         Prefers the result (annotated) frame; falls back to the raw
@@ -156,7 +157,7 @@ class GestureBackend:
         Returns:
             An OpenCV BGR image, or None if no frame is available.
         """
-        frame: Optional[cv.Mat] = None
+        frame: np.ndarray | None = None
 
         try:
             frame = self.result_queue.get_nowait()
@@ -241,7 +242,7 @@ class GestureBackend:
         5. Annotates the frame and pushes it to the result queue.
         """
         frame_count: int = 0
-        latest_result: Optional[vision.HandLandmarkerResult] = None
+        latest_result: vision.HandLandmarkerResult | None = None
         latest_result_timestamp: int = -1
 
         while not self.app_stop_event.is_set() and not self.process_stop_event.is_set():

@@ -44,6 +44,25 @@ Run the script:
 uv run main.py
 ```
 
+Linting:
+
+```sh
+uv run ruff check .
+uv run ruff format .
+```
+
+Type Checking:
+
+```sh
+uv run ty check .
+```
+
+Unit Testing:
+
+```sh
+uv run pytest tests
+```
+
 ## Collaboration Conventions
 
 - Use semantic commit messages.

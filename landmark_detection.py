@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import threading
+
 import cv2 as cv
 import mediapipe as mp
-import threading
-from typing import Optional, Tuple
-
+import numpy as np
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
@@ -34,7 +34,7 @@ class HandLandmarker:
             running_mode: MediaPipe running mode (LIVE_STREAM, VIDEO, or IMAGE).
         """
         self.running_mode = running_mode
-        self._latest_result: Optional[vision.HandLandmarkerResult] = None
+        self._latest_result: vision.HandLandmarkerResult | None = None
         self._latest_timestamp_ms: int = -1
         self._lock = threading.Lock()
 
@@ -70,7 +70,7 @@ class HandLandmarker:
                 self._latest_timestamp_ms = timestamp_ms
                 self._latest_result = result
 
-    def detect_async(self, frame: cv.Mat, timestamp_ms: int) -> None:
+    def detect_async(self, frame: np.ndarray, timestamp_ms: int) -> None:
         """Submit a frame for asynchronous hand landmark detection.
 
         The result becomes available via :meth:`get_latest_result`.
@@ -89,7 +89,7 @@ class HandLandmarker:
         mp_img = mp_image(image_format=mp_ImageFormat.SRGB, data=rgb)
         self.detector.detect_async(mp_img, timestamp_ms)
 
-    def get_latest_result(self) -> Tuple[Optional[vision.HandLandmarkerResult], int]:
+    def get_latest_result(self) -> tuple[vision.HandLandmarkerResult | None, int]:
         """Return the most recent detection result and its timestamp.
 
         Returns:

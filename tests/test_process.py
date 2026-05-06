@@ -7,8 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from process import put_latest, GestureBackend
-
+from process import GestureBackend, put_latest
 
 # ---------------------------------------------------------------------------
 # put_latest

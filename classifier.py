@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 
 class GestureClassifier:
     """Rule-based hand gesture classifier using MediaPipe 2D hand landmarks.
@@ -23,10 +21,10 @@ class GestureClassifier:
             hold_frames: Number of consecutive identical frames required
                 before a new gesture is confirmed.
         """
-        self._prev_gesture: Optional[int] = None
+        self._prev_gesture: int | None = None
         self._hold_count: int = 0
         self._hold_frames: int = hold_frames
-        self.confirmed_gesture: Optional[int] = None
+        self.confirmed_gesture: int | None = None
 
     def count_extended_fingers(self, hand_2d: list) -> int:
         """Count how many of the four main fingers are extended.
@@ -60,7 +58,7 @@ class GestureClassifier:
         """Return True if the hand forms a fist (0-1 fingers extended)."""
         return self.count_extended_fingers(hand_2d) <= 1
 
-    def classify(self, hand_2d: list) -> Optional[int]:
+    def classify(self, hand_2d: list) -> int | None:
         """Classify the current hand pose.
 
         Applies a hold-frame debounce: the gesture must be observed for

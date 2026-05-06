@@ -6,8 +6,7 @@ import pytest
 
 from classifier import GestureClassifier
 
-from . import FakeLandmark, make_landmarks
-
+from . import make_landmarks
 
 # ---------------------------------------------------------------------------
 # count_extended_fingers

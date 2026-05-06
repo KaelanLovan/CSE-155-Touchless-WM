@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-import cv2 as cv
 import tkinter as tk
-from typing import Optional
+
+import cv2 as cv
+import numpy as np
 
 from process import GestureBackend
 
@@ -10,7 +11,7 @@ PERF_INFO: bool = False
 
 
 def bgr_to_tk_image(
-    frame: cv.Mat, display_w: int = 320, display_h: int = 240
+    frame: np.ndarray, display_w: int = 320, display_h: int = 240
 ) -> tk.PhotoImage:
     """Convert an OpenCV BGR frame to a Tkinter PhotoImage for display.
 
@@ -93,7 +94,7 @@ def build_gui(backend: GestureBackend, perf_info: bool = False) -> tk.Tk:
         if frame is not None:
             image = bgr_to_tk_image(frame)
             camera_label.configure(image=image)
-            camera_label.image = image
+            camera_label.image = image  # ty: ignore[unresolved-attribute]
 
         if not backend.app_stop_event.is_set():
             root.after(20, update_camera_view)
