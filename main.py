@@ -8,27 +8,39 @@ import numpy as np
 from process import GestureBackend
 
 PERF_INFO: bool = False
+"""Print per-frame timing stats on close when True."""
+
+MAX_DISPLAY_WIDTH: int = 400
+"""Maximum width of the camera preview in pixels.  Height is derived
+from the frame's aspect ratio."""
 
 
 def bgr_to_tk_image(
-    frame: np.ndarray, display_w: int = 320, display_h: int = 240
-) -> tk.PhotoImage:
-    """Convert an OpenCV BGR frame to a Tkinter PhotoImage for display.
+    frame: np.ndarray, max_w: int = MAX_DISPLAY_WIDTH
+) -> tuple[tk.PhotoImage, int, int]:
+    """Convert an OpenCV BGR frame to a Tkinter PhotoImage.
+
+    The frame is scaled so its width does not exceed *max_w*, keeping
+    the original aspect ratio.
 
     Args:
         frame: Source BGR image from OpenCV.
-        display_w: Display width after resize.
-        display_h: Display height after resize.
+        max_w: Maximum display width in pixels.
 
     Returns:
-        A Tkinter-compatible PhotoImage.
+        A ``(photo, w, h)`` tuple giving the PhotoImage and its
+        dimensions.
     """
-    resized = cv.resize(frame, (display_w, display_h), interpolation=cv.INTER_AREA)
+    h, w = frame.shape[:2]
+    if w > max_w:
+        scale = max_w / w
+        w = max_w
+        h = int(h * scale)
+    resized = cv.resize(frame, (w, h), interpolation=cv.INTER_AREA)
     rgb = cv.cvtColor(resized, cv.COLOR_BGR2RGB)
-    h, w = rgb.shape[:2]
     ppm_header = f"P6 {w} {h} 255 ".encode("ascii")
     data = ppm_header + rgb.tobytes()
-    return tk.PhotoImage(data=data, format="PPM")
+    return tk.PhotoImage(data=data, format="PPM"), w, h
 
 
 def build_gui(backend: GestureBackend, perf_info: bool = False) -> tk.Tk:
@@ -43,8 +55,6 @@ def build_gui(backend: GestureBackend, perf_info: bool = False) -> tk.Tk:
     """
     root = tk.Tk()
     root.title("Gesture Recognition")
-    root.geometry("400x430")
-    root.resizable(False, False)
 
     title = tk.Label(root, text="Gesture Recognition", font=("Segoe UI", 14, "bold"))
     title.pack(pady=(10, 8))
@@ -84,17 +94,29 @@ def build_gui(backend: GestureBackend, perf_info: bool = False) -> tk.Tk:
     )
     stop_btn.grid(row=0, column=1, padx=6)
 
-    camera_label = tk.Label(
-        root, width=320, height=240, bg="black", relief="sunken", bd=1
-    )
+    camera_label = tk.Label(root, bg="black", relief="sunken", bd=1)
     camera_label.pack(padx=10, pady=(10, 8))
 
+    _sized: bool = False
+
     def update_camera_view() -> None:
+        nonlocal _sized
         frame = backend.get_latest_display_frame()
         if frame is not None:
-            image = bgr_to_tk_image(frame)
-            camera_label.configure(image=image)
+            image, dw, dh = bgr_to_tk_image(frame)
+            camera_label.configure(image=image, width=dw, height=dh)
             camera_label.image = image  # ty: ignore[unresolved-attribute]
+
+            if not _sized:
+                _sized = True
+                control_height = (
+                    title.winfo_reqheight()
+                    + status_label.winfo_reqheight()
+                    + start_btn.winfo_reqheight()
+                    + 60
+                )
+                root.geometry(f"{dw + 20}x{dh + control_height}")
+                root.resizable(False, False)
 
         if not backend.app_stop_event.is_set():
             root.after(20, update_camera_view)
