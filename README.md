@@ -19,6 +19,10 @@ The goal of this project is to provide alternative means of manipulating the des
 
 ## Quickstart
 
+### Note: TKinter
+
+Python's `tkinter` module is part of Python's standard library, but often needs to be installed separately as a system package (not with `uv`, `pip`, etc.) on Linux systems.
+
 ### Development
 
 Clone the repository:
