@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import cv2 as cv
+import sys
 import threading
 import queue
 import time
@@ -12,6 +13,17 @@ from mediapipe.tasks.python import vision
 
 from landmark_detection import HandLandmarker
 from classifier import GestureClassifier
+
+
+def _detect_modifier_key() -> str:
+    """Return the pyautogui modifier key name for the current platform.
+
+    Returns:
+        ``"command"`` on macOS, ``"alt"`` on Windows and Linux.
+    """
+    if sys.platform == "darwin":
+        return "command"
+    return "alt"
 
 
 def put_latest(q: queue.Queue, item: Any) -> None:
@@ -39,15 +51,27 @@ class GestureBackend:
     - Process thread: runs detection + classification on each frame.
     """
 
-    def __init__(self, cam_index: int = 0, perf_info: bool = False) -> None:
+    def __init__(
+        self,
+        cam_index: int = 0,
+        perf_info: bool = False,
+        modifier_key: Optional[str] = None,
+    ) -> None:
         """Initialise the backend.
 
         Args:
             cam_index: OpenCV camera device index.
             perf_info: If True, print per-frame timing to stdout.
+            modifier_key: pyautogui modifier key name for window-switching
+                shortcuts. Auto-detected from the current OS when None.
+                Common values: ``"alt"`` (Windows/Linux), ``"command"``
+                (macOS).
         """
         self.cam_index: int = cam_index
         self.perf_info: bool = perf_info
+        self.modifier_key: str = (
+            modifier_key if modifier_key is not None else _detect_modifier_key()
+        )
 
         self.frame_queue: queue.Queue = queue.Queue(maxsize=1)
         self.preview_queue: queue.Queue = queue.Queue(maxsize=1)
@@ -195,7 +219,7 @@ class GestureBackend:
         1. Runs async hand landmark detection.
         2. Classifies the static hand pose.
         3. Detects swipe gestures from horizontal hand movement.
-        4. Triggers desktop actions (Alt+Tab) on swipe.
+        4. Triggers desktop actions (window-switch shortcut) on swipe.
         5. Annotates the frame and pushes it to the result queue.
         """
         frame_count: int = 0
@@ -263,14 +287,14 @@ class GestureBackend:
                             self.last_gesture_time = current_time
                             if self.perf_info:
                                 print("Detected: Swipe Right")
-                            pyautogui.hotkey("alt", "tab")
+                            pyautogui.hotkey(self.modifier_key, "tab")
 
                         elif dx < -self.swipe_threshold:
                             self.gesture_label = "Swipe Left"
                             self.last_gesture_time = current_time
                             if self.perf_info:
                                 print("Detected: Swipe Left")
-                            pyautogui.hotkey("alt", "shift", "tab")
+                            pyautogui.hotkey(self.modifier_key, "shift", "tab")
 
                 # --- static gesture classification ---------------------------
                 classify_idx = self.classifier.classify(hand_2d)
